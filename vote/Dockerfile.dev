@@ -1,0 +1,13 @@
+FROM node:17.6-slim
+# https://stackoverflow.com/a/52430444
+ARG NODE_ENV
+ENV NODE_ENV $NODE_ENV
+ARG REDIS_HOST
+ENV REDIS_HOST $REDIS_HOST
+ARG WEBSITE_PORT
+ENV WEBSITE_PORT $WEBSITE_PORT
+WORKDIR /app
+ADD . .
+RUN npm install
+# EXPOSE 4000 35729
+CMD npx livereload . --wait 200 --extraExts 'njk' & npx nodemon --no-update-notifier --ext js,json,njk index.js

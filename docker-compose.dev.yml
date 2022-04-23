@@ -1,0 +1,101 @@
+version: "3"
+
+services:
+  vote:
+    build:
+      context: ./vote
+      dockerfile: Dockerfile.dev
+      # https://stackoverflow.com/a/52430444
+      args:
+        - NODE_ENV=development
+        - WEBSITE_PORT=4000
+    volumes:
+      - "./vote:/app"
+    ports:
+      # must be same as WEBSITE_PORT= arg above
+      - "4000:4000"
+      - "35729:35729"
+    networks:
+      - backend
+    depends_on:
+      - redis
+    
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+
+  metrics:
+    build:
+      context: ./metrics
+      dockerfile: Dockerfile.dev
+      # https://stackoverflow.com/a/52430444
+      args:
+        - NODE_ENV=development
+        - SERVER_PORT=5000
+        - REDIS_HOST=redis
+    volumes:
+      - "./metrics:/app"
+    ports:
+      # must be same as SERVER_PORT= arg above
+      - "5000:5000"
+    networks:
+      - backend
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus
+    ports: 
+      - "9090:9090"
+    command: --config.file=/etc/prometheus/prometheus.yaml
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml
+    networks:
+      - backend
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    networks:
+      - backend
+
+  grafana-setup:
+    container_name: grafana-setup
+    image: alpine:3.10
+    depends_on:
+      - grafana
+    volumes:
+      - ./datasource.json:/etc/grafana/datasource.json
+      - ./my-dashboard.json:/etc/grafana/my-dashboard.json
+    command: >
+      /bin/sh -c "
+        apk add --no-cache curl
+        cd /etc/grafana/
+        sleep 10
+        until nc -vz grafana 3000 ; do echo 'Waiting for grafana' ; sleep 5 ; done
+
+        sleep 5
+        curl --silent http://grafana:3000/api/datasources
+        echo
+
+        curl http://grafana:3000/api/datasources \
+          --header 'Content-Type: application/json' \
+          --data @datasource.json
+        
+        curl http://grafana:3000/api/dashboards/db \
+          --silent \
+          --header 'Content-Type: application/json' \
+          --data @my-dashboard.json"
+    networks:
+      - backend
+
+networks:
+  backend: {}

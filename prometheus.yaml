@@ -1,0 +1,8 @@
+scrape_configs:
+  - job_name: 'local'
+    scrape_interval: 10s
+    static_configs:
+    - targets:
+      - '0.0.0.0:5000' # to work with make prometheus + metrics
+      - 'metrics:5000' # to work with make docker-compose
+      - '192.168.49.2:32000' # minikube

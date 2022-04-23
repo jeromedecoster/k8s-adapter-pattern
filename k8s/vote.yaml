@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote
+  namespace: k8s-adapter
+  labels:
+    app: vote
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vote
+  template:
+    metadata:
+      labels:
+        app: vote
+    spec:
+      containers:
+      - name: vote
+        image: site:latest
+        env:
+        - name: REDIS_HOST
+          value: "redis-svc"
+        ports:
+        - containerPort: 4000
+          name: vote 
+        imagePullPolicy: Never
+      
+      initContainers:
+      - name: init-vote
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -vz redis-svc 6379 ; do echo "Waiting for redis-svc"; sleep 1; done;']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vote-svc
+  namespace: k8s-adapter
+spec:
+  selector:
+    app: vote
+  type: NodePort
+  ports:
+  - port: 9000
+    nodePort: 31000
+    protocol: TCP
+    targetPort: 4000
