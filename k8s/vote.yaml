@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: vote
-        image: site:latest
+        image: vote:latest
         env:
         - name: REDIS_HOST
           value: "redis-svc"
